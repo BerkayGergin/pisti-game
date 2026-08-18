@@ -32,6 +32,10 @@
       100% { opacity: 0; transform: translateY(-25px) scale(0.8); }
     }
     .emote-popup { animation: floatUp 2.5s forwards ease-out; }
+
+    .card-foil {
+      background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.12) 100%);
+    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center p-3 select-none overflow-x-hidden">
@@ -46,7 +50,7 @@
     </div>
   </div>
 
-  <!-- Üst Profil Çubuğu (Giriş Yapıldığında Görünür) -->
+  <!-- Üst Profil Çubuğu -->
   <div id="top-bar" class="hidden w-full max-w-4xl flex justify-between items-center bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl mb-3 shadow-xl backdrop-blur-md">
     <div class="flex items-center gap-3">
       <button id="btn-avatar-top" title="Avatarı Değiştir" class="w-11 h-11 bg-slate-800 border-2 border-amber-400/80 rounded-2xl flex items-center justify-center text-2xl hover:scale-105 transition shadow-lg">
@@ -57,7 +61,7 @@
           <span id="display-username" class="font-extrabold text-slate-100 text-base leading-tight">Oyuncu</span>
           <span id="badge-guest" class="hidden text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-md border border-slate-700 font-bold">MİSAFİR</span>
         </div>
-        <div id="display-theme" class="text-xs text-slate-400 font-medium">Deste: Klasik</div>
+        <div id="display-theme" class="text-xs text-slate-400 font-medium">Deste: Klasik Casino</div>
       </div>
     </div>
     <div class="flex items-center gap-2">
@@ -80,7 +84,6 @@
 
     <div id="auth-error-box" class="hidden bg-red-500/10 border border-red-500/40 text-red-400 text-xs p-2.5 rounded-xl text-center font-bold"></div>
 
-    <!-- Üye Girişi / Kayıt Formu -->
     <div class="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-3">
       <h2 class="text-xs uppercase tracking-wider font-extrabold text-amber-400">Üye Girişi / Kayıt</h2>
       <div>
@@ -94,21 +97,19 @@
       <button id="btn-auth-submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl text-xs transition shadow-lg">Giriş Yap / Kayıt Ol</button>
     </div>
 
-    <!-- Ayrım Çizgisi -->
     <div class="flex items-center gap-3">
       <div class="flex-1 h-px bg-slate-800"></div>
       <span class="text-xs text-slate-500 font-bold">VEYA</span>
       <div class="flex-1 h-px bg-slate-800"></div>
     </div>
 
-    <!-- Misafir Girişi -->
     <div class="space-y-2">
       <input id="input-guest-name" type="text" placeholder="İsteğe bağlı misafir adı" class="w-full px-3 py-2 rounded-xl bg-slate-800/80 border border-slate-700 focus:outline-none focus:border-indigo-500 text-white font-semibold text-xs" />
       <button id="btn-guest-submit" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-slate-200 font-bold rounded-xl text-xs transition">👤 Misafir Olarak Devam Et</button>
     </div>
   </div>
 
-  <!-- 2. EKRAN: OYUN LOBİSİ (ODA SEÇİMİ VE MASAYA KATILMA) -->
+  <!-- 2. EKRAN: OYUN LOBİSİ -->
   <div id="lobby-screen" class="hidden w-full max-w-md bg-slate-900 p-6 rounded-3xl shadow-2xl border border-slate-800 space-y-5">
     <div class="text-center">
       <h2 class="text-2xl font-black text-amber-400 tracking-tight">OYUN LOBİSİ</h2>
@@ -142,7 +143,10 @@
         <div id="turn-info" class="text-sm font-black text-amber-400">Bekleniyor...</div>
         <div class="flex items-center gap-3">
           <div id="timer-display" class="hidden font-mono font-black text-amber-400 text-xs bg-slate-950 px-2.5 py-1 rounded-lg border border-amber-400/40">⏳ 15s</div>
-          <div id="deck-info" class="font-bold text-slate-300">Kalan Deste: -</div>
+          <div id="deck-info" class="font-bold text-slate-300 flex items-center gap-1">
+            <span>🎴 Deste:</span>
+            <span id="deck-count-num">-</span>
+          </div>
         </div>
       </div>
     </div>
@@ -153,7 +157,7 @@
     <!-- Masa Ortası -->
     <div class="flex flex-col items-center justify-center my-4">
       <div id="table-drop-zone" class="relative w-28 h-40 flex items-center justify-center">
-        <div id="middle-stack-bg" class="absolute inset-0 bg-emerald-900/60 rounded-2xl border-2 border-dashed border-emerald-600/50 flex items-center justify-center text-xs text-emerald-300 font-bold">Boş</div>
+        <div id="middle-stack-bg" class="absolute inset-0 bg-emerald-900/40 rounded-2xl border-2 border-dashed border-emerald-500/40 flex items-center justify-center text-xs text-emerald-300 font-bold">Boş</div>
         <div id="middle-top-card" class="relative z-10 w-full h-full flex items-center justify-center"></div>
       </div>
       <div id="middle-count" class="mt-2 text-xs font-black text-emerald-300 bg-emerald-950/80 px-3 py-1 rounded-full border border-emerald-800">0 Kart</div>
@@ -174,7 +178,7 @@
         <button onclick="sendEmote('💀')" class="hover:scale-125 transition text-lg">💀</button>
       </div>
 
-      <div id="my-hand" class="flex gap-4 justify-center items-center min-h-[145px]"></div>
+      <div id="my-hand" class="flex gap-4 justify-center items-center min-h-[160px]"></div>
     </div>
 
     <!-- Canlı Sohbet Paneli -->
@@ -206,7 +210,6 @@
   </div>
 
   <!-- MODALLAR -->
-  <!-- Şifre Değiştirme Modal -->
   <div id="password-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
     <div class="bg-slate-900 p-6 rounded-3xl max-w-sm w-full border border-slate-800 space-y-4 text-center shadow-2xl">
       <div class="flex justify-between items-center">
@@ -227,7 +230,6 @@
     </div>
   </div>
 
-  <!-- Liderlik Tablosu Modal -->
   <div id="leaderboard-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
     <div class="bg-slate-900 p-6 rounded-3xl max-w-md w-full border border-slate-800 space-y-4 text-center shadow-2xl">
       <div class="flex justify-between items-center">
@@ -238,7 +240,6 @@
     </div>
   </div>
 
-  <!-- Avatar Seçim Modal -->
   <div id="avatar-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
     <div class="bg-slate-900 p-6 rounded-3xl max-w-sm w-full border border-slate-800 space-y-4 text-center shadow-2xl">
       <div class="flex justify-between items-center">
@@ -249,7 +250,6 @@
     </div>
   </div>
 
-  <!-- Dükkan Modal -->
   <div id="shop-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
     <div class="bg-slate-900 p-6 rounded-3xl max-w-2xl w-full border border-slate-800 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl">
       <div class="flex justify-between items-center">
@@ -260,7 +260,6 @@
     </div>
   </div>
 
-  <!-- Oyun Sonu Modal -->
   <div id="game-over-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
     <div class="bg-slate-900 p-6 rounded-3xl max-w-md w-full border border-slate-800 text-center space-y-4 shadow-2xl">
       <h2 class="text-3xl font-black text-amber-400">Oyun Bitti!</h2>
@@ -325,6 +324,127 @@
       }
     }
 
+    function getCardIllustrationSVG(rank, suit, isRed, themeId) {
+      const isNeon = themeId === "neon_cyber";
+      const isDragon = themeId === "crimson_dragon";
+      const isSpecial = themeId === "special_duo";
+
+      const primaryColor = isSpecial ? "#fbbf24" : isNeon ? "#22d3ee" : isDragon ? "#f59e0b" : (isRed ? "#dc2626" : "#0f172a");
+      const secondaryColor = isSpecial ? "#c084fc" : isNeon ? "#e879f9" : isDragon ? "#ef4444" : (isRed ? "#f87171" : "#475569");
+
+      if (rank === "A") {
+        return `
+          <svg viewBox="0 0 100 100" class="w-12 h-12 drop-shadow-md">
+            <circle cx="50" cy="50" r="42" fill="none" stroke="${secondaryColor}" stroke-width="2" stroke-dasharray="4 2" opacity="0.6"/>
+            <circle cx="50" cy="50" r="34" fill="${secondaryColor}" fill-opacity="0.15"/>
+            <text x="50" y="66" font-size="44" font-weight="900" fill="${primaryColor}" text-anchor="middle">${suitSymbols[suit]}</text>
+          </svg>
+        `;
+      }
+
+      if (rank === "K") {
+        return `
+          <svg viewBox="0 0 100 100" class="w-14 h-14 drop-shadow">
+            <path d="M20 70 L80 70 L75 40 L60 55 L50 25 L40 55 L25 40 Z" fill="${primaryColor}" stroke="${secondaryColor}" stroke-width="2"/>
+            <circle cx="50" cy="22" r="4" fill="${secondaryColor}"/>
+            <circle cx="24" cy="38" r="3" fill="${secondaryColor}"/>
+            <circle cx="76" cy="38" r="3" fill="${secondaryColor}"/>
+            <rect x="25" y="74" width="50" height="6" rx="3" fill="${secondaryColor}"/>
+            <text x="50" y="64" font-size="14" font-weight="900" fill="#ffffff" text-anchor="middle">KING</text>
+          </svg>
+        `;
+      }
+
+      if (rank === "Q") {
+        return `
+          <svg viewBox="0 0 100 100" class="w-14 h-14 drop-shadow">
+            <path d="M25 72 C25 45 35 32 50 32 C65 32 75 45 75 72 Z" fill="${secondaryColor}" fill-opacity="0.2"/>
+            <path d="M28 68 L72 68 L68 45 L58 54 L50 35 L42 54 L32 45 Z" fill="${primaryColor}"/>
+            <circle cx="50" cy="80" r="6" fill="${secondaryColor}"/>
+            <circle cx="50" cy="32" r="3.5" fill="${primaryColor}"/>
+            <text x="50" y="62" font-size="12" font-weight="900" fill="#ffffff" text-anchor="middle">QUEEN</text>
+          </svg>
+        `;
+      }
+
+      if (rank === "J") {
+        return `
+          <svg viewBox="0 0 100 100" class="w-14 h-14 drop-shadow">
+            <path d="M50 15 L78 35 L70 75 L50 88 L30 75 L22 35 Z" fill="${secondaryColor}" fill-opacity="0.2" stroke="${primaryColor}" stroke-width="2"/>
+            <path d="M50 24 L50 78 M35 45 L65 45" stroke="${primaryColor}" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="50" cy="45" r="7" fill="${primaryColor}"/>
+            <text x="50" y="68" font-size="13" font-weight="900" fill="${primaryColor}" text-anchor="middle">JACK</text>
+          </svg>
+        `;
+      }
+
+      return `
+        <div class="flex flex-col items-center justify-center">
+          <span class="text-3xl font-black leading-none drop-shadow-sm">${suitSymbols[suit]}</span>
+          <span class="text-[10px] font-extrabold opacity-60 tracking-wider mt-0.5">${rank}</span>
+        </div>
+      `;
+    }
+
+    // AI Görsel Destekli ve Back.png Arka Planlı Kart Renderlayıcı
+    function renderCard(card, isClickable = false, index = 0, theme = activeTheme) {
+      if (!card) return "";
+      const isRed = card.suit === "HEARTS" || card.suit === "DIAMONDS";
+      const currentThemeId = theme ? theme.id : "classic";
+      const themeBorder = theme ? theme.borderColor : "border-slate-300 shadow-md";
+      const textColor = (theme && theme.id !== "classic") ? theme.textColor : (isRed ? "text-red-600" : "text-slate-900");
+
+      const isSpecialFigure = ["A", "J", "Q", "K"].includes(card.rank);
+      const customImgPath = `/assets/cards/${currentThemeId}/${card.rank}.png`;
+      const backImgPath = `/assets/cards/${currentThemeId}/back.png`;
+      const fallbackSvg = getCardIllustrationSVG(card.rank, card.suit, isRed, currentThemeId);
+
+      return `
+        <div id="hand-card-${index}" ${isClickable ? `onclick="onCardClick(${index})"` : ""} 
+             class="relative w-24 h-36 sm:w-28 sm:h-40 rounded-2xl border-2 ${themeBorder} flex flex-col justify-between select-none transition-all duration-200 overflow-hidden shadow-2xl ${isClickable ? 'cursor-pointer hover:-translate-y-3 hover:scale-105 ring-2 ring-transparent hover:ring-amber-400' : ''}">
+          
+          <!-- 1. Özel Figür Kartları (A, J, Q, K için Tam Görsel) -->
+          ${isSpecialFigure ? `
+            <img src="${customImgPath}" 
+                 onerror="this.style.display='none'; const fb = this.nextElementSibling; if(fb) fb.style.display='flex';" 
+                 class="absolute inset-0 w-full h-full object-cover z-10" />
+          ` : ''}
+
+          <!-- 2. Sayı Kartları (2-10): Arka Planda back.png, Üstte Numaralar ve Simgeler -->
+          <div style="${isSpecialFigure ? 'display:none;' : 'display:flex;'}" class="relative w-full h-full flex flex-col justify-between p-2.5 ${textColor} overflow-hidden">
+            
+            <!-- Arka Plan Resmi (back.png) -->
+            <img src="${backImgPath}" 
+                 onerror="this.style.display='none';" 
+                 class="absolute inset-0 w-full h-full object-cover z-0 opacity-85" />
+            
+            <!-- Karartma Katmanı (Rakamların daha okunaklı olması için) -->
+            <div class="absolute inset-0 bg-slate-950/40 z-0"></div>
+
+            <!-- Sol Üst -->
+            <div class="relative z-10 flex flex-col items-start leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+              <span class="font-black text-base sm:text-lg">${card.rank}</span>
+              <span class="text-xs sm:text-sm font-normal">${suitSymbols[card.suit]}</span>
+            </div>
+
+            <!-- Orta Alan -->
+            <div class="relative z-10 flex items-center justify-center my-auto w-full drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+              ${fallbackSvg}
+            </div>
+
+            <!-- Sağ Alt (Ters) -->
+            <div class="relative z-10 flex flex-col items-end leading-none rotate-180 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+              <span class="font-black text-base sm:text-lg">${card.rank}</span>
+              <span class="text-xs sm:text-sm font-normal">${suitSymbols[card.suit]}</span>
+            </div>
+          </div>
+
+          <!-- Folyo Parıltı Efekti -->
+          <div class="absolute inset-0 card-foil pointer-events-none z-20"></div>
+        </div>
+      `;
+    }
+
     function flyCardAnimation(startElem, targetElem, onComplete) {
       const startRect = startElem.getBoundingClientRect();
       const targetRect = targetElem.getBoundingClientRect();
@@ -367,7 +487,6 @@
       };
     }
 
-    // --- GİRİŞ VE OTURUM KONTROLLERİ ---
     const authScreen = document.getElementById("auth-screen");
     const lobbyScreen = document.getElementById("lobby-screen");
     const gameScreen = document.getElementById("game-screen");
@@ -382,7 +501,6 @@
     const roomParam = urlParams.get("room");
     if (roomParam) roomInput.value = roomParam.toUpperCase();
 
-    // Üye Girişi Butonu
     document.getElementById("btn-auth-submit").onclick = () => {
       const username = usernameInput.value.trim();
       const password = passwordInput.value.trim();
@@ -390,13 +508,11 @@
       socket.emit("auth_user", { username, password });
     };
 
-    // Misafir Girişi Butonu
     document.getElementById("btn-guest-submit").onclick = () => {
       const customGuest = guestNameInput.value.trim();
       socket.emit("guest_login", customGuest);
     };
 
-    // Çıkış Yap Butonu
     document.getElementById("btn-logout").onclick = () => {
       socket.emit("logout");
     };
@@ -424,7 +540,6 @@
       topBar.classList.remove("hidden");
       lobbyScreen.classList.remove("hidden");
 
-      // Misafir ise şifre değiştirme butonunu gizle
       document.getElementById("btn-change-pass").classList.toggle("hidden", isGuest);
       document.getElementById("badge-guest").classList.toggle("hidden", !isGuest);
     });
@@ -438,20 +553,17 @@
       document.querySelectorAll(".user-avatar-display").forEach(el => el.innerText = user.avatar || "👑");
       document.getElementById("display-username").innerText = user.username;
       document.getElementById("display-gold").innerText = user.gold;
-      document.getElementById("display-theme").innerText = `Deste: ${activeTheme ? activeTheme.name : 'Klasik'}`;
+      document.getElementById("display-theme").innerText = `Deste: ${activeTheme ? activeTheme.name : 'Klasik Casino'}`;
       renderShop();
     });
 
-    // --- LOBİDEN OYUNA KATILMA ---
     document.getElementById("btn-join-room").onclick = () => {
       const roomId = roomInput.value.trim().toUpperCase() || "ODA1";
       const mode = document.getElementById("select-mode").value;
       currentRoomId = roomId;
-
       socket.emit("join_room", { roomId, mode });
     };
 
-    // Avatar Seçimi
     const avatarListEl = document.getElementById("avatar-list");
     AVAILABLE_AVATARS.forEach(av => {
       avatarListEl.innerHTML += `<button onclick="setAvatar('${av}')" class="p-2 hover:scale-125 bg-slate-900 rounded-xl transition">${av}</button>`;
@@ -466,7 +578,6 @@
     document.getElementById("btn-avatar-top").onclick = openAvatarModal;
     document.getElementById("btn-close-avatar").onclick = () => document.getElementById("avatar-modal").classList.add("hidden");
 
-    // Şifre Değiştirme
     document.getElementById("btn-change-pass").onclick = () => {
       if (isGuest) return alert("Misafir hesapların şifresi yoktur.");
       document.getElementById("password-modal").classList.remove("hidden");
@@ -490,7 +601,6 @@
       }
     });
 
-    // Liderlik Tablosu
     document.getElementById("btn-leaderboard").onclick = () => {
       socket.emit("get_leaderboard");
       document.getElementById("leaderboard-modal").classList.remove("hidden");
@@ -515,7 +625,6 @@
       });
     });
 
-    // Dükkan
     function renderShop() {
       const container = document.getElementById("shop-items");
       container.innerHTML = "";
@@ -525,13 +634,17 @@
         const isEquipped = currentUser && currentUser.selectedThemeId === theme.id;
         if (theme.isExclusive && !isOwned) return;
 
+        const previewCard = renderCard({ id: "preview", suit: "SPADES", rank: "A" }, false, 999, theme);
+
         container.innerHTML += `
           <div class="p-4 bg-slate-800 rounded-2xl border border-slate-700 flex flex-col justify-between space-y-3">
             <div class="flex justify-between items-center">
               <span class="font-bold text-slate-100">${theme.name}</span>
               ${theme.isExclusive ? '<span class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/40 font-bold">ÖZEL</span>' : ''}
             </div>
-            <div class="h-20 ${theme.bgGradient} rounded-xl border ${theme.borderColor} flex items-center justify-center ${theme.textColor} font-black text-xl">A ♠</div>
+            <div class="flex justify-center p-2 bg-slate-950/60 rounded-xl">
+              ${previewCard}
+            </div>
             ${isEquipped ? `
               <button disabled class="w-full py-1.5 bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 rounded-xl text-xs font-bold">Kuşanıldı</button>
             ` : isOwned ? `
@@ -549,23 +662,6 @@
 
     document.getElementById("btn-toggle-shop").onclick = () => document.getElementById("shop-modal").classList.remove("hidden");
     document.getElementById("btn-close-shop").onclick = () => document.getElementById("shop-modal").classList.add("hidden");
-
-    function renderCard(card, isClickable = false, index = 0, theme = activeTheme) {
-      if (!card) return "";
-      const isRed = card.suit === "HEARTS" || card.suit === "DIAMONDS";
-      const themeGradient = theme ? theme.bgGradient : "bg-slate-50";
-      const themeBorder = theme ? theme.borderColor : "border-slate-300";
-      const textColor = (theme && theme.id !== "classic") ? theme.textColor : (isRed ? "text-red-600" : "text-slate-950");
-
-      return `
-        <div id="hand-card-${index}" ${isClickable ? `onclick="onCardClick(${index})"` : ""} 
-             class="w-24 h-36 ${themeGradient} ${textColor} rounded-2xl border-2 ${themeBorder} flex flex-col justify-between p-2.5 select-none shadow-xl transition-all duration-200 ${isClickable ? 'cursor-pointer hover:-translate-y-3 hover:scale-105 ring-2 ring-transparent hover:ring-amber-400' : ''}">
-          <div class="text-left font-black text-lg leading-none">${card.rank}<br><span class="text-xs font-normal">${suitSymbols[card.suit]}</span></div>
-          <div class="text-center font-black text-2xl drop-shadow">${suitSymbols[card.suit]}</div>
-          <div class="text-right font-black text-lg leading-none rotate-180">${card.rank}<br><span class="text-xs font-normal">${suitSymbols[card.suit]}</span></div>
-        </div>
-      `;
-    }
 
     function copyInviteLink() {
       const inviteUrl = `${window.location.origin}/?room=${currentRoomId}`;
@@ -612,7 +708,6 @@
       }
     });
 
-    // Sohbet
     const chatWindow = document.getElementById("chat-window");
     const chatBadge = document.getElementById("chat-unread-badge");
     const chatMessagesEl = document.getElementById("chat-messages");
@@ -716,7 +811,7 @@
         channelSelector.classList.add("hidden");
       }
 
-      document.getElementById("deck-info").innerText = `Kalan: ${state.remainingDeckCount}`;
+      document.getElementById("deck-count-num").innerText = `${state.remainingDeckCount} Kart`;
 
       const timerDisplay = document.getElementById("timer-display");
       if (timerInterval) clearInterval(timerInterval);
@@ -762,13 +857,17 @@
           const isTheirTurn = state.currentTurnSlot === p.slot;
           const avatarObj = (state.playerAvatars || []).find(a => a.slot === p.slot);
           const pAvatar = avatarObj ? avatarObj.avatar : "👑";
+          const backStyle = activeTheme ? activeTheme.backPattern : "bg-blue-800";
 
           otherPlayersContainer.innerHTML += `
-            <div id="player-slot-box-${p.slot}" class="relative flex flex-col items-center bg-slate-900 px-4 py-2.5 rounded-2xl border ${isTheirTurn ? 'border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.4)]' : 'border-slate-800'}">
+            <div id="player-slot-box-${p.slot}" class="relative flex flex-col items-center bg-slate-900 px-4 py-2.5 rounded-2xl border ${isTheirTurn ? 'border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.5)]' : 'border-slate-800'}">
               <div id="emote-slot-${p.slot}" class="hidden absolute -top-8 text-2xl emote-popup"></div>
               <div class="text-2xl mb-0.5">${pAvatar}</div>
               <span class="font-bold text-xs text-slate-200">${p.username}</span>
-              <span class="text-[10px] text-slate-400">🃏 ${p.cardCount} Kart</span>
+              <div class="flex items-center gap-1 mt-1">
+                <div class="w-3.5 h-5 ${backStyle} rounded-sm border border-white/20 shadow-sm"></div>
+                <span class="text-[11px] font-black text-slate-300">${p.cardCount}</span>
+              </div>
             </div>
           `;
         }
