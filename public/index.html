@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pişti Arena</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <style>
+    @keyframes screenShake {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      20% { transform: translate(-10px, 8px) rotate(-2deg); }
+      40% { transform: translate(10px, -8px) rotate(2deg); }
+      60% { transform: translate(-6px, -4px) rotate(-1deg); }
+      80% { transform: translate(6px, 4px) rotate(1deg); }
+    }
+    .shake-active { animation: screenShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+
+    @keyframes popBanner {
+      0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+      50% { transform: scale(1.15) rotate(3deg); opacity: 1; }
+      70% { transform: scale(0.95) rotate(-1deg); }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+    .animate-pop-banner { animation: popBanner 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+    @keyframes floatUp {
+      0% { opacity: 0; transform: translateY(10px) scale(0.8); }
+      20% { opacity: 1; transform: translateY(0) scale(1.2); }
+      80% { opacity: 1; transform: translateY(-10px) scale(1); }
+      100% { opacity: 0; transform: translateY(-25px) scale(0.8); }
+    }
+    .emote-popup { animation: floatUp 2.5s forwards ease-out; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center p-3 select-none overflow-x-hidden">
+
+  <!-- Pişti Tam Ekran Efekti -->
+  <div id="pishti-overlay" class="hidden fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300">
+    <div id="pishti-box" class="relative flex flex-col items-center justify-center p-8">
+      <div class="absolute inset-0 bg-amber-500 blur-3xl opacity-70 rounded-full animate-pulse"></div>
+      <div class="relative bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 font-black text-5xl md:text-7xl px-12 py-6 rounded-3xl shadow-[0_0_60px_rgba(251,191,36,0.9)] border-4 border-white tracking-widest uppercase text-center">
+        <span id="pishti-text">PİŞTİ!</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Üst Profil Çubuğu (Giriş Yapıldığında Görünür) -->
+  <div id="top-bar" class="hidden w-full max-w-4xl flex justify-between items-center bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl mb-3 shadow-xl backdrop-blur-md">
+    <div class="flex items-center gap-3">
+      <button id="btn-avatar-top" title="Avatarı Değiştir" class="w-11 h-11 bg-slate-800 border-2 border-amber-400/80 rounded-2xl flex items-center justify-center text-2xl hover:scale-105 transition shadow-lg">
+        <span class="user-avatar-display">👑</span>
+      </button>
+      <div>
+        <div class="flex items-center gap-1.5">
+          <span id="display-username" class="font-extrabold text-slate-100 text-base leading-tight">Oyuncu</span>
+          <span id="badge-guest" class="hidden text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-md border border-slate-700 font-bold">MİSAFİR</span>
+        </div>
+        <div id="display-theme" class="text-xs text-slate-400 font-medium">Deste: Klasik</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="btn-change-pass" title="Şifre Değiştir" class="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold rounded-xl transition">🔑</button>
+      <button id="btn-leaderboard" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1">🏆 Sıralama</button>
+      <div class="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-3.5 py-1.5 rounded-xl font-black text-amber-400 text-sm">
+        🪙 <span id="display-gold">0</span>
+      </div>
+      <button id="btn-toggle-shop" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold uppercase tracking-wider rounded-xl transition shadow-md">Dükkan</button>
+      <button id="btn-logout" title="Çıkış Yap" class="px-3 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-500/30 text-xs font-bold rounded-xl transition">Çıkış</button>
+    </div>
+  </div>
+
+  <!-- 1. EKRAN: GİRİŞ / KAYIT / MİSAFİR EKRANI -->
+  <div id="auth-screen" class="w-full max-w-md bg-slate-900 p-6 rounded-3xl shadow-2xl border border-slate-800 space-y-5">
+    <div class="text-center">
+      <h1 class="text-3xl font-black text-emerald-400 tracking-tight">PİŞTİ ARENA</h1>
+      <p class="text-xs text-slate-400 mt-1">Hesabına giriş yap veya misafir olarak oyna</p>
+    </div>
+
+    <div id="auth-error-box" class="hidden bg-red-500/10 border border-red-500/40 text-red-400 text-xs p-2.5 rounded-xl text-center font-bold"></div>
+
+    <!-- Üye Girişi / Kayıt Formu -->
+    <div class="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-3">
+      <h2 class="text-xs uppercase tracking-wider font-extrabold text-amber-400">Üye Girişi / Kayıt</h2>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Kullanıcı Adı</label>
+        <input id="input-username" type="text" placeholder="Kullanıcı Adınız" autocomplete="off" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-emerald-500 text-white font-semibold text-xs" />
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Şifre / PIN</label>
+        <input id="input-password" type="password" placeholder="Şifreniz" autocomplete="new-password" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-emerald-500 text-white font-semibold text-xs" />
+      </div>
+      <button id="btn-auth-submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl text-xs transition shadow-lg">Giriş Yap / Kayıt Ol</button>
+    </div>
+
+    <!-- Ayrım Çizgisi -->
+    <div class="flex items-center gap-3">
+      <div class="flex-1 h-px bg-slate-800"></div>
+      <span class="text-xs text-slate-500 font-bold">VEYA</span>
+      <div class="flex-1 h-px bg-slate-800"></div>
+    </div>
+
+    <!-- Misafir Girişi -->
+    <div class="space-y-2">
+      <input id="input-guest-name" type="text" placeholder="İsteğe bağlı misafir adı" class="w-full px-3 py-2 rounded-xl bg-slate-800/80 border border-slate-700 focus:outline-none focus:border-indigo-500 text-white font-semibold text-xs" />
+      <button id="btn-guest-submit" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-slate-200 font-bold rounded-xl text-xs transition">👤 Misafir Olarak Devam Et</button>
+    </div>
+  </div>
+
+  <!-- 2. EKRAN: OYUN LOBİSİ (ODA SEÇİMİ VE MASAYA KATILMA) -->
+  <div id="lobby-screen" class="hidden w-full max-w-md bg-slate-900 p-6 rounded-3xl shadow-2xl border border-slate-800 space-y-5">
+    <div class="text-center">
+      <h2 class="text-2xl font-black text-amber-400 tracking-tight">OYUN LOBİSİ</h2>
+      <p class="text-xs text-slate-400 mt-1">Oda kodunu gir ve oyuna başla</p>
+    </div>
+
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs uppercase tracking-wider font-bold mb-1 text-slate-400">Oda Kodu</label>
+        <input id="input-room" type="text" value="ODA1" class="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-emerald-500 text-white font-medium text-sm" />
+      </div>
+      <div>
+        <label class="block text-xs uppercase tracking-wider font-bold mb-1 text-slate-400">Oyun Modu</label>
+        <select id="select-mode" class="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-emerald-500 text-white font-medium text-sm">
+          <option value="1v1">1v1 Düello (2 Kişilik)</option>
+          <option value="2v2">2v2 Eşli (4 Kişilik)</option>
+        </select>
+      </div>
+      <button id="btn-join-room" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl shadow-lg transition duration-150 text-sm">🎮 Masaya Otur</button>
+    </div>
+  </div>
+
+  <!-- 3. EKRAN: OYUN MASASI -->
+  <div id="game-screen" class="hidden w-full max-w-4xl flex flex-col items-center justify-between min-h-[85vh] bg-emerald-950/70 rounded-3xl p-5 border-4 border-amber-900/60 shadow-2xl relative">
+    <div class="w-full flex flex-col gap-2">
+      <div class="w-full flex justify-between items-center bg-slate-900/80 px-5 py-2.5 rounded-xl border border-slate-800 text-xs">
+        <div class="flex items-center gap-2">
+          <span id="room-info" class="font-bold text-slate-300">Oda: -</span>
+          <button id="btn-copy-invite" onclick="copyInviteLink()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-[10px] font-bold text-emerald-400 transition flex items-center gap-1">🔗 Davet Et</button>
+        </div>
+        <div id="turn-info" class="text-sm font-black text-amber-400">Bekleniyor...</div>
+        <div class="flex items-center gap-3">
+          <div id="timer-display" class="hidden font-mono font-black text-amber-400 text-xs bg-slate-950 px-2.5 py-1 rounded-lg border border-amber-400/40">⏳ 15s</div>
+          <div id="deck-info" class="font-bold text-slate-300">Kalan Deste: -</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rakipler -->
+    <div id="other-players" class="flex gap-6 justify-center items-center my-3"></div>
+
+    <!-- Masa Ortası -->
+    <div class="flex flex-col items-center justify-center my-4">
+      <div id="table-drop-zone" class="relative w-28 h-40 flex items-center justify-center">
+        <div id="middle-stack-bg" class="absolute inset-0 bg-emerald-900/60 rounded-2xl border-2 border-dashed border-emerald-600/50 flex items-center justify-center text-xs text-emerald-300 font-bold">Boş</div>
+        <div id="middle-top-card" class="relative z-10 w-full h-full flex items-center justify-center"></div>
+      </div>
+      <div id="middle-count" class="mt-2 text-xs font-black text-emerald-300 bg-emerald-950/80 px-3 py-1 rounded-full border border-emerald-800">0 Kart</div>
+    </div>
+
+    <!-- Alt Alan -->
+    <div class="w-full flex flex-col items-center relative">
+      <div id="my-emote-anchor" class="relative">
+        <div id="my-emote-box" class="hidden absolute -top-12 left-1/2 -translate-x-1/2 text-3xl emote-popup"></div>
+      </div>
+
+      <div class="flex gap-2 mb-2 bg-slate-900/90 px-3 py-1.5 rounded-full border border-slate-800 shadow-lg">
+        <button onclick="sendEmote('🔥')" class="hover:scale-125 transition text-lg">🔥</button>
+        <button onclick="sendEmote('😎')" class="hover:scale-125 transition text-lg">😎</button>
+        <button onclick="sendEmote('😭')" class="hover:scale-125 transition text-lg">😭</button>
+        <button onclick="sendEmote('👋')" class="hover:scale-125 transition text-lg">👋</button>
+        <button onclick="sendEmote('❤️')" class="hover:scale-125 transition text-lg">❤️</button>
+        <button onclick="sendEmote('💀')" class="hover:scale-125 transition text-lg">💀</button>
+      </div>
+
+      <div id="my-hand" class="flex gap-4 justify-center items-center min-h-[145px]"></div>
+    </div>
+
+    <!-- Canlı Sohbet Paneli -->
+    <div class="absolute bottom-4 right-4 z-40">
+      <button id="btn-toggle-chat" class="relative p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl transition border-2 border-indigo-400">
+        💬
+        <span id="chat-unread-badge" class="hidden absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-slate-900 animate-ping"></span>
+      </button>
+
+      <div id="chat-window" class="hidden absolute bottom-14 right-0 w-72 sm:w-80 bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl flex flex-col p-3 backdrop-blur-md">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-2">
+          <span class="font-bold text-xs text-amber-400 flex items-center gap-1.5">💬 Masa Sohbeti</span>
+          <button id="btn-close-chat" class="text-slate-400 hover:text-white text-sm font-bold">✕</button>
+        </div>
+
+        <div id="chat-channel-selector" class="hidden flex gap-1 mb-2 bg-slate-950 p-1 rounded-xl border border-slate-800 text-[11px] font-bold">
+          <button id="btn-channel-all" onclick="setChatChannel(false)" class="flex-1 py-1 bg-indigo-600 text-white rounded-lg transition">Tümü</button>
+          <button id="btn-channel-team" onclick="setChatChannel(true)" class="flex-1 py-1 text-slate-400 hover:text-white rounded-lg transition">🔒 Takım</button>
+        </div>
+
+        <div id="chat-messages" class="h-44 overflow-y-auto space-y-2 text-xs p-1"></div>
+
+        <div class="flex gap-2 mt-2 pt-2 border-t border-slate-800">
+          <input id="input-chat-msg" type="text" placeholder="Mesaj yaz..." maxlength="150" class="flex-1 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 font-medium" />
+          <button id="btn-send-chat" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition">Gönder</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALLAR -->
+  <!-- Şifre Değiştirme Modal -->
+  <div id="password-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 p-6 rounded-3xl max-w-sm w-full border border-slate-800 space-y-4 text-center shadow-2xl">
+      <div class="flex justify-between items-center">
+        <h3 class="text-lg font-bold text-amber-400">🔑 Şifre Değiştir</h3>
+        <button id="btn-close-password" class="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+      <div class="space-y-3 text-left">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Mevcut Şifre</label>
+          <input id="input-old-pass" type="password" placeholder="Eski şifreniz" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-amber-400 text-white font-semibold text-xs" />
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Yeni Şifre</label>
+          <input id="input-new-pass" type="password" placeholder="Yeni şifreniz" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-emerald-500 text-white font-semibold text-xs" />
+        </div>
+        <button id="btn-submit-new-pass" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl text-xs transition">Şifreyi Güncelle</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Liderlik Tablosu Modal -->
+  <div id="leaderboard-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 p-6 rounded-3xl max-w-md w-full border border-slate-800 space-y-4 text-center shadow-2xl">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xl font-black text-amber-400 flex items-center gap-2">🏆 Liderlik Sıralaması</h3>
+        <button id="btn-close-leaderboard" class="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+      <div id="leaderboard-list" class="space-y-2 max-h-72 overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <!-- Avatar Seçim Modal -->
+  <div id="avatar-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 p-6 rounded-3xl max-w-sm w-full border border-slate-800 space-y-4 text-center shadow-2xl">
+      <div class="flex justify-between items-center">
+        <h3 class="text-lg font-bold text-amber-400">Avatar Seç</h3>
+        <button id="btn-close-avatar" class="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+      <div id="avatar-list" class="grid grid-cols-4 gap-3 text-3xl p-2 bg-slate-950 rounded-2xl border border-slate-800"></div>
+    </div>
+  </div>
+
+  <!-- Dükkan Modal -->
+  <div id="shop-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 p-6 rounded-3xl max-w-2xl w-full border border-slate-800 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl">
+      <div class="flex justify-between items-center">
+        <h2 class="text-2xl font-black text-amber-400">Deste Koleksiyonu</h2>
+        <button id="btn-close-shop" class="text-slate-400 hover:text-white text-xl font-bold">✕</button>
+      </div>
+      <div id="shop-items" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
+  </div>
+
+  <!-- Oyun Sonu Modal -->
+  <div id="game-over-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 p-6 rounded-3xl max-w-md w-full border border-slate-800 text-center space-y-4 shadow-2xl">
+      <h2 class="text-3xl font-black text-amber-400">Oyun Bitti!</h2>
+      <div id="score-details" class="text-slate-200 text-sm space-y-2"></div>
+      <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 font-bold text-xs">🪙 Altın ödülü hesabınıza eklendi!</div>
+      <button onclick="location.reload()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-bold">Lobiye Dön</button>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    let currentRoomId = "";
+    let mySlot = null;
+    let currentUser = null;
+    let isGuest = false;
+    let allThemes = {};
+    let activeTheme = null;
+    let timerInterval = null;
+    let isAnimatingCard = false;
+    let isTeamOnly = false;
+    let isChatOpen = false;
+
+    const AVAILABLE_AVATARS = ["👑", "🐱", "🐺", "🦊", "🚀", "💎", "⭐", "🐉", "🤖", "⚡", "🌸", "🎮"];
+    const suitSymbols = { SPADES: "♠", HEARTS: "♥", DIAMONDS: "♦", CLUBS: "♣" };
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playSound(type) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      if (type === 'card_play') {
+        const bufferSize = audioCtx.sampleRate * 0.08;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(1400, audioCtx.currentTime);
+        filter.Q.setValueAtTime(3.0, audioCtx.currentTime);
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(audioCtx.destination);
+        noise.start();
+      } else if (type === 'pishti') {
+        const freqs = [523.25, 659.25, 783.99, 1046.50];
+        freqs.forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.2, audioCtx.currentTime + idx * 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + idx * 0.05 + 0.6);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(audioCtx.currentTime + idx * 0.05);
+          osc.stop(audioCtx.currentTime + idx * 0.05 + 0.6);
+        });
+      }
+    }
+
+    function flyCardAnimation(startElem, targetElem, onComplete) {
+      const startRect = startElem.getBoundingClientRect();
+      const targetRect = targetElem.getBoundingClientRect();
+
+      const clone = startElem.cloneNode(true);
+      clone.removeAttribute("id");
+      clone.removeAttribute("onclick");
+      clone.style.position = "fixed";
+      clone.style.left = `${startRect.left}px`;
+      clone.style.top = `${startRect.top}px`;
+      clone.style.width = `${startRect.width}px`;
+      clone.style.height = `${startRect.height}px`;
+      clone.style.zIndex = "9999";
+      clone.style.pointerEvents = "none";
+      clone.style.margin = "0";
+      clone.style.transition = "none";
+      document.body.appendChild(clone);
+
+      const targetCenterX = targetRect.left + (targetRect.width / 2);
+      const targetCenterY = targetRect.top + (targetRect.height / 2);
+      const startCenterX = startRect.left + (startRect.width / 2);
+      const startCenterY = startRect.top + (startRect.height / 2);
+
+      const deltaX = targetCenterX - startCenterX;
+      const deltaY = targetCenterY - startCenterY;
+      const randomRotate = (Math.random() * 12 - 6);
+
+      const animation = clone.animate([
+        { transform: "translate(0, 0) scale(1) rotate(0deg)", opacity: 1 },
+        { transform: `translate(${deltaX}px, ${deltaY}px) scale(1.02) rotate(${randomRotate}deg)`, opacity: 1 }
+      ], {
+        duration: 200,
+        easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+        fill: "forwards"
+      });
+
+      animation.onfinish = () => {
+        clone.remove();
+        if (onComplete) onComplete();
+      };
+    }
+
+    // --- GİRİŞ VE OTURUM KONTROLLERİ ---
+    const authScreen = document.getElementById("auth-screen");
+    const lobbyScreen = document.getElementById("lobby-screen");
+    const gameScreen = document.getElementById("game-screen");
+    const topBar = document.getElementById("top-bar");
+
+    const usernameInput = document.getElementById("input-username");
+    const passwordInput = document.getElementById("input-password");
+    const guestNameInput = document.getElementById("input-guest-name");
+    const roomInput = document.getElementById("input-room");
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomParam = urlParams.get("room");
+    if (roomParam) roomInput.value = roomParam.toUpperCase();
+
+    // Üye Girişi Butonu
+    document.getElementById("btn-auth-submit").onclick = () => {
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+      if (!username || !password) return alert("Lütfen kullanıcı adı ve şifre girin.");
+      socket.emit("auth_user", { username, password });
+    };
+
+    // Misafir Girişi Butonu
+    document.getElementById("btn-guest-submit").onclick = () => {
+      const customGuest = guestNameInput.value.trim();
+      socket.emit("guest_login", customGuest);
+    };
+
+    // Çıkış Yap Butonu
+    document.getElementById("btn-logout").onclick = () => {
+      socket.emit("logout");
+    };
+
+    socket.on("logout_success", () => {
+      currentUser = null;
+      isGuest = false;
+      topBar.classList.add("hidden");
+      lobbyScreen.classList.add("hidden");
+      gameScreen.classList.add("hidden");
+      authScreen.classList.remove("hidden");
+      usernameInput.value = "";
+      passwordInput.value = "";
+    });
+
+    socket.on("auth_error", (msg) => {
+      const errBox = document.getElementById("auth-error-box");
+      errBox.innerText = msg;
+      errBox.classList.remove("hidden");
+    });
+
+    socket.on("auth_success", (data) => {
+      isGuest = data.isGuest;
+      authScreen.classList.add("hidden");
+      topBar.classList.remove("hidden");
+      lobbyScreen.classList.remove("hidden");
+
+      // Misafir ise şifre değiştirme butonunu gizle
+      document.getElementById("btn-change-pass").classList.toggle("hidden", isGuest);
+      document.getElementById("badge-guest").classList.toggle("hidden", !isGuest);
+    });
+
+    socket.on("profile_data", ({ user, themes, isGuest: guestFlag }) => {
+      currentUser = user;
+      allThemes = themes;
+      activeTheme = themes[user.selectedThemeId];
+      if (guestFlag !== undefined) isGuest = guestFlag;
+
+      document.querySelectorAll(".user-avatar-display").forEach(el => el.innerText = user.avatar || "👑");
+      document.getElementById("display-username").innerText = user.username;
+      document.getElementById("display-gold").innerText = user.gold;
+      document.getElementById("display-theme").innerText = `Deste: ${activeTheme ? activeTheme.name : 'Klasik'}`;
+      renderShop();
+    });
+
+    // --- LOBİDEN OYUNA KATILMA ---
+    document.getElementById("btn-join-room").onclick = () => {
+      const roomId = roomInput.value.trim().toUpperCase() || "ODA1";
+      const mode = document.getElementById("select-mode").value;
+      currentRoomId = roomId;
+
+      socket.emit("join_room", { roomId, mode });
+    };
+
+    // Avatar Seçimi
+    const avatarListEl = document.getElementById("avatar-list");
+    AVAILABLE_AVATARS.forEach(av => {
+      avatarListEl.innerHTML += `<button onclick="setAvatar('${av}')" class="p-2 hover:scale-125 bg-slate-900 rounded-xl transition">${av}</button>`;
+    });
+
+    function setAvatar(avatar) {
+      socket.emit("select_avatar", { avatar });
+      document.getElementById("avatar-modal").classList.add("hidden");
+    }
+
+    function openAvatarModal() { document.getElementById("avatar-modal").classList.remove("hidden"); }
+    document.getElementById("btn-avatar-top").onclick = openAvatarModal;
+    document.getElementById("btn-close-avatar").onclick = () => document.getElementById("avatar-modal").classList.add("hidden");
+
+    // Şifre Değiştirme
+    document.getElementById("btn-change-pass").onclick = () => {
+      if (isGuest) return alert("Misafir hesapların şifresi yoktur.");
+      document.getElementById("password-modal").classList.remove("hidden");
+    };
+    document.getElementById("btn-close-password").onclick = () => document.getElementById("password-modal").classList.add("hidden");
+
+    document.getElementById("btn-submit-new-pass").onclick = () => {
+      const oldPassword = document.getElementById("input-old-pass").value.trim();
+      const newPassword = document.getElementById("input-new-pass").value.trim();
+      if (!oldPassword || !newPassword) return alert("Lütfen hem eski hem yeni şifrenizi girin.");
+
+      socket.emit("change_password", { oldPassword, newPassword });
+    };
+
+    socket.on("password_change_result", (result) => {
+      alert(result.message);
+      if (result.success) {
+        document.getElementById("input-old-pass").value = "";
+        document.getElementById("input-new-pass").value = "";
+        document.getElementById("password-modal").classList.add("hidden");
+      }
+    });
+
+    // Liderlik Tablosu
+    document.getElementById("btn-leaderboard").onclick = () => {
+      socket.emit("get_leaderboard");
+      document.getElementById("leaderboard-modal").classList.remove("hidden");
+    };
+    document.getElementById("btn-close-leaderboard").onclick = () => document.getElementById("leaderboard-modal").classList.add("hidden");
+
+    socket.on("leaderboard_data", (list) => {
+      const el = document.getElementById("leaderboard-list");
+      el.innerHTML = "";
+      list.forEach((u, idx) => {
+        const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}.`;
+        el.innerHTML += `
+          <div class="flex items-center justify-between bg-slate-800/80 p-2.5 rounded-xl border border-slate-700 text-sm">
+            <div class="flex items-center gap-2">
+              <span class="font-black text-amber-400 w-6 text-left">${medal}</span>
+              <span class="text-lg">${u.avatar || '👑'}</span>
+              <span class="font-bold text-slate-200">${u.username}</span>
+            </div>
+            <span class="font-extrabold text-amber-400">🪙 ${u.gold}</span>
+          </div>
+        `;
+      });
+    });
+
+    // Dükkan
+    function renderShop() {
+      const container = document.getElementById("shop-items");
+      container.innerHTML = "";
+
+      Object.values(allThemes).forEach(theme => {
+        const isOwned = currentUser && currentUser.inventory.includes(theme.id);
+        const isEquipped = currentUser && currentUser.selectedThemeId === theme.id;
+        if (theme.isExclusive && !isOwned) return;
+
+        container.innerHTML += `
+          <div class="p-4 bg-slate-800 rounded-2xl border border-slate-700 flex flex-col justify-between space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-slate-100">${theme.name}</span>
+              ${theme.isExclusive ? '<span class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/40 font-bold">ÖZEL</span>' : ''}
+            </div>
+            <div class="h-20 ${theme.bgGradient} rounded-xl border ${theme.borderColor} flex items-center justify-center ${theme.textColor} font-black text-xl">A ♠</div>
+            ${isEquipped ? `
+              <button disabled class="w-full py-1.5 bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 rounded-xl text-xs font-bold">Kuşanıldı</button>
+            ` : isOwned ? `
+              <button onclick="selectTheme('${theme.id}')" class="w-full py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition">Kullan</button>
+            ` : `
+              <button onclick="buyTheme('${theme.id}')" class="w-full py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-black transition">Satın Al (${theme.price} 🪙)</button>
+            `}
+          </div>
+        `;
+      });
+    }
+
+    function buyTheme(themeId) { socket.emit("buy_theme", { themeId }); }
+    function selectTheme(themeId) { socket.emit("select_theme", { themeId }); }
+
+    document.getElementById("btn-toggle-shop").onclick = () => document.getElementById("shop-modal").classList.remove("hidden");
+    document.getElementById("btn-close-shop").onclick = () => document.getElementById("shop-modal").classList.add("hidden");
+
+    function renderCard(card, isClickable = false, index = 0, theme = activeTheme) {
+      if (!card) return "";
+      const isRed = card.suit === "HEARTS" || card.suit === "DIAMONDS";
+      const themeGradient = theme ? theme.bgGradient : "bg-slate-50";
+      const themeBorder = theme ? theme.borderColor : "border-slate-300";
+      const textColor = (theme && theme.id !== "classic") ? theme.textColor : (isRed ? "text-red-600" : "text-slate-950");
+
+      return `
+        <div id="hand-card-${index}" ${isClickable ? `onclick="onCardClick(${index})"` : ""} 
+             class="w-24 h-36 ${themeGradient} ${textColor} rounded-2xl border-2 ${themeBorder} flex flex-col justify-between p-2.5 select-none shadow-xl transition-all duration-200 ${isClickable ? 'cursor-pointer hover:-translate-y-3 hover:scale-105 ring-2 ring-transparent hover:ring-amber-400' : ''}">
+          <div class="text-left font-black text-lg leading-none">${card.rank}<br><span class="text-xs font-normal">${suitSymbols[card.suit]}</span></div>
+          <div class="text-center font-black text-2xl drop-shadow">${suitSymbols[card.suit]}</div>
+          <div class="text-right font-black text-lg leading-none rotate-180">${card.rank}<br><span class="text-xs font-normal">${suitSymbols[card.suit]}</span></div>
+        </div>
+      `;
+    }
+
+    function copyInviteLink() {
+      const inviteUrl = `${window.location.origin}/?room=${currentRoomId}`;
+      navigator.clipboard.writeText(inviteUrl).then(() => {
+        const btn = document.getElementById("btn-copy-invite");
+        btn.innerText = "✓ Kopyalandı!";
+        setTimeout(() => btn.innerHTML = "🔗 Davet Et", 2000);
+      });
+    }
+
+    function onCardClick(index) {
+      if (isAnimatingCard) return;
+      const clickedCardEl = document.getElementById(`hand-card-${index}`);
+      const middleTargetEl = document.getElementById("table-drop-zone");
+
+      if (clickedCardEl && middleTargetEl) {
+        isAnimatingCard = true;
+        playSound('card_play');
+        flyCardAnimation(clickedCardEl, middleTargetEl, () => {
+          socket.emit("play_card", { roomId: currentRoomId, cardIndex: index });
+          isAnimatingCard = false;
+        });
+      } else {
+        playSound('card_play');
+        socket.emit("play_card", { roomId: currentRoomId, cardIndex: index });
+      }
+    }
+
+    function sendEmote(emote) { socket.emit("send_emote", { roomId: currentRoomId, emote }); }
+
+    socket.on("player_emote", ({ slot, emote }) => {
+      if (slot === mySlot) {
+        const box = document.getElementById("my-emote-box");
+        box.innerText = emote;
+        box.classList.remove("hidden");
+        setTimeout(() => box.classList.add("hidden"), 2500);
+      } else {
+        const otherEmoteEl = document.getElementById(`emote-slot-${slot}`);
+        if (otherEmoteEl) {
+          otherEmoteEl.innerText = emote;
+          otherEmoteEl.classList.remove("hidden");
+          setTimeout(() => otherEmoteEl.classList.add("hidden"), 2500);
+        }
+      }
+    });
+
+    // Sohbet
+    const chatWindow = document.getElementById("chat-window");
+    const chatBadge = document.getElementById("chat-unread-badge");
+    const chatMessagesEl = document.getElementById("chat-messages");
+    const chatInput = document.getElementById("input-chat-msg");
+    const channelSelector = document.getElementById("chat-channel-selector");
+
+    document.getElementById("btn-toggle-chat").onclick = () => {
+      isChatOpen = !isChatOpen;
+      chatWindow.classList.toggle("hidden", !isChatOpen);
+      if (isChatOpen) {
+        chatBadge.classList.add("hidden");
+        chatInput.focus();
+      }
+    };
+    document.getElementById("btn-close-chat").onclick = () => {
+      isChatOpen = false;
+      chatWindow.classList.add("hidden");
+    };
+
+    function setChatChannel(teamOnly) {
+      isTeamOnly = teamOnly;
+      const btnAll = document.getElementById("btn-channel-all");
+      const btnTeam = document.getElementById("btn-channel-team");
+
+      if (teamOnly) {
+        btnTeam.className = "flex-1 py-1 bg-purple-600 text-white rounded-lg transition";
+        btnAll.className = "flex-1 py-1 text-slate-400 hover:text-white rounded-lg transition";
+        chatInput.placeholder = "Takım arkadaşına yaz...";
+      } else {
+        btnAll.className = "flex-1 py-1 bg-indigo-600 text-white rounded-lg transition";
+        btnTeam.className = "flex-1 py-1 text-slate-400 hover:text-white rounded-lg transition";
+        chatInput.placeholder = "Mesaj yaz...";
+      }
+    }
+
+    function sendChatMessage() {
+      const text = chatInput.value.trim();
+      if (!text) return;
+      socket.emit("send_chat", { roomId: currentRoomId, text, isTeamOnly });
+      chatInput.value = "";
+    }
+
+    document.getElementById("btn-send-chat").onclick = sendChatMessage;
+    chatInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendChatMessage();
+    });
+
+    socket.on("chat_message", (msg) => {
+      const isMe = msg.slot === mySlot;
+      const teamTag = msg.isTeamOnly ? '<span class="bg-purple-500/20 text-purple-300 px-1 rounded text-[9px] font-bold border border-purple-500/40 mr-1">TAKIM</span>' : '';
+
+      chatMessagesEl.innerHTML += `
+        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+          <div class="flex items-center gap-1 text-[10px] text-slate-400 mb-0.5">
+            ${teamTag}
+            <span>${msg.avatar}</span>
+            <span class="font-bold text-slate-300">${msg.sender}</span>
+            <span>${msg.time}</span>
+          </div>
+          <div class="px-3 py-1.5 rounded-2xl max-w-[85%] break-words ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : msg.isTeamOnly ? 'bg-purple-950/80 border border-purple-700 text-purple-200 rounded-tl-none' : 'bg-slate-800 text-slate-200 rounded-tl-none'}">
+            ${msg.text}
+          </div>
+        </div>
+      `;
+
+      chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+      if (!isChatOpen) chatBadge.classList.remove("hidden");
+    });
+
+    socket.on("game_event", (data) => {
+      if (data.type === "PISHTI") {
+        playSound('pishti');
+        const gameScreenEl = document.getElementById("game-screen");
+        gameScreenEl.classList.add("shake-active");
+        setTimeout(() => gameScreenEl.classList.remove("shake-active"), 450);
+
+        const overlay = document.getElementById("pishti-overlay");
+        const box = document.getElementById("pishti-box");
+        document.getElementById("pishti-text").innerText = data.message;
+
+        box.classList.remove("animate-pop-banner");
+        void box.offsetWidth;
+        box.classList.add("animate-pop-banner");
+
+        overlay.classList.remove("hidden");
+        setTimeout(() => overlay.classList.add("hidden"), 2000);
+      }
+    });
+
+    socket.on("game_state", (state) => {
+      lobbyScreen.classList.add("hidden");
+      gameScreen.classList.remove("hidden");
+      document.getElementById("room-info").innerText = `Oda: ${state.roomId} (${state.mode})`;
+
+      mySlot = state.mySlot;
+      if (state.activeTheme) activeTheme = state.activeTheme;
+
+      if (state.mode === "2v2") {
+        channelSelector.classList.remove("hidden");
+      } else {
+        channelSelector.classList.add("hidden");
+      }
+
+      document.getElementById("deck-info").innerText = `Kalan: ${state.remainingDeckCount}`;
+
+      const timerDisplay = document.getElementById("timer-display");
+      if (timerInterval) clearInterval(timerInterval);
+
+      if (state.status === "PLAYING") {
+        timerDisplay.classList.remove("hidden");
+        const updateTimer = () => {
+          const timeLeft = Math.max(0, Math.ceil((state.turnDeadline - Date.now()) / 1000));
+          timerDisplay.innerText = `⏳ ${timeLeft}s`;
+          if (timeLeft <= 4) {
+            timerDisplay.className = "font-mono font-black text-red-400 text-xs bg-red-950/80 px-2.5 py-1 rounded-lg border border-red-500 animate-ping";
+          } else {
+            timerDisplay.className = "font-mono font-black text-amber-400 text-xs bg-slate-950 px-2.5 py-1 rounded-lg border border-amber-400/40";
+          }
+        };
+        updateTimer();
+        timerInterval = setInterval(updateTimer, 500);
+
+        const isMyTurn = state.currentTurnSlot === state.mySlot;
+        document.getElementById("turn-info").innerText = isMyTurn ? "👉 SIRA SENDE!" : `Sıra: Oyuncu ${state.currentTurnSlot + 1}`;
+        document.getElementById("turn-info").className = isMyTurn ? "text-sm font-black text-emerald-400 animate-pulse" : "text-sm font-black text-amber-400";
+      } else {
+        timerDisplay.classList.add("hidden");
+        document.getElementById("turn-info").innerText = "Oyuncular Bekleniyor...";
+      }
+
+      const middleStackBg = document.getElementById("middle-stack-bg");
+      const middleTopCard = document.getElementById("middle-top-card");
+      document.getElementById("middle-count").innerText = `${state.middleCardCount} Kart`;
+
+      if (state.topCard) {
+        middleStackBg.classList.add("hidden");
+        middleTopCard.innerHTML = renderCard(state.topCard, false, 0, activeTheme);
+      } else {
+        middleStackBg.classList.remove("hidden");
+        middleTopCard.innerHTML = "";
+      }
+
+      const otherPlayersContainer = document.getElementById("other-players");
+      otherPlayersContainer.innerHTML = "";
+      state.players.forEach(p => {
+        if (p.slot !== mySlot) {
+          const isTheirTurn = state.currentTurnSlot === p.slot;
+          const avatarObj = (state.playerAvatars || []).find(a => a.slot === p.slot);
+          const pAvatar = avatarObj ? avatarObj.avatar : "👑";
+
+          otherPlayersContainer.innerHTML += `
+            <div id="player-slot-box-${p.slot}" class="relative flex flex-col items-center bg-slate-900 px-4 py-2.5 rounded-2xl border ${isTheirTurn ? 'border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.4)]' : 'border-slate-800'}">
+              <div id="emote-slot-${p.slot}" class="hidden absolute -top-8 text-2xl emote-popup"></div>
+              <div class="text-2xl mb-0.5">${pAvatar}</div>
+              <span class="font-bold text-xs text-slate-200">${p.username}</span>
+              <span class="text-[10px] text-slate-400">🃏 ${p.cardCount} Kart</span>
+            </div>
+          `;
+        }
+      });
+
+      const myHandContainer = document.getElementById("my-hand");
+      myHandContainer.innerHTML = "";
+      const isMyTurn = state.currentTurnSlot === state.mySlot && state.status === "PLAYING";
+      state.myHand.forEach((card, index) => {
+        myHandContainer.innerHTML += renderCard(card, isMyTurn, index, activeTheme);
+      });
+
+      if (state.status === "FINISHED" && state.finalScores) {
+        if (timerInterval) clearInterval(timerInterval);
+        const modal = document.getElementById("game-over-modal");
+        const details = document.getElementById("score-details");
+        const sA = state.finalScores.teamA;
+        const sB = state.finalScores.teamB;
+
+        confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
+
+        details.innerHTML = `
+          <div class="p-3 bg-slate-800 rounded-xl border border-slate-700">
+            <div class="font-bold text-emerald-400">Takım A: ${sA.totalScore} Puan</div>
+            <div class="text-xs text-slate-400">Kart: ${sA.totalCardsCount} | Pişti: ${sA.pishtiPoints}p</div>
+          </div>
+          <div class="p-3 bg-slate-800 rounded-xl border border-slate-700">
+            <div class="font-bold text-cyan-400">Takım B: ${sB.totalScore} Puan</div>
+            <div class="text-xs text-slate-400">Kart: ${sB.totalCardsCount} | Pişti: ${sB.pishtiPoints}p</div>
+          </div>
+        `;
+        modal.classList.remove("hidden");
+      }
+    });
+
+    socket.on("error_message", (msg) => alert(msg));
+  </script>
+</body>
+</html>
