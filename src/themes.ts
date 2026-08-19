@@ -1,4 +1,4 @@
-import { DeckTheme } from "./types";
+import { DeckTheme, TableTheme } from "./types";
 
 export const DECK_THEMES: Record<string, DeckTheme> = {
   classic: {
@@ -40,5 +40,40 @@ export const DECK_THEMES: Record<string, DeckTheme> = {
     textColor: "text-amber-300",
     borderColor: "border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.7)]",
     backPattern: "bg-[url('/assets/cards/special_duo/back.png')] bg-cover bg-center border-amber-300/60",
+  },
+};
+
+export const TABLE_THEMES: Record<string, TableTheme> = {
+  classic_green: {
+    id: "classic_green",
+    name: "Klasik Yeşil Çuha",
+    price: 0,
+    isExclusive: false,
+    tableClass: "bg-emerald-950/80 border-amber-900/60 shadow-2xl",
+    previewBg: "bg-gradient-to-br from-emerald-900 to-emerald-950 border-amber-800/80",
+  },
+  cyber_grid: {
+    id: "cyber_grid",
+    name: "Siberpunk Izgara",
+    price: 150,
+    isExclusive: false,
+    tableClass: "bg-slate-950/90 border-cyan-500/50 shadow-[0_0_50px_rgba(6,182,212,0.25)]",
+    previewBg: "bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 border-cyan-400",
+  },
+  crimson_velvet: {
+    id: "crimson_velvet",
+    name: "Kızıl Ejderha Kadifesi",
+    price: 250,
+    isExclusive: false,
+    tableClass: "bg-red-950/85 border-amber-600/60 shadow-[0_0_50px_rgba(220,38,38,0.3)]",
+    previewBg: "bg-gradient-to-br from-red-950 via-neutral-900 to-red-900 border-amber-500",
+  },
+  cosmic_nebula: {
+    id: "cosmic_nebula",
+    name: "Yıldız Işığı (Özel)",
+    price: 0,
+    isExclusive: true,
+    tableClass: "bg-indigo-950/90 border-purple-500/60 shadow-[0_0_60px_rgba(168,85,247,0.35)]",
+    previewBg: "bg-gradient-to-br from-purple-950 via-indigo-950 to-slate-950 border-purple-400",
   },
 };
