@@ -1,3 +1,5 @@
+// src/types.ts
+
 export type Suit = "SPADES" | "HEARTS" | "DIAMONDS" | "CLUBS";
 export type Rank = "A" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "J" | "Q" | "K";
 export type GameVariant = "standard" | "turbo" | "bloody";
@@ -21,13 +23,28 @@ export interface Player {
   isDisconnected?: boolean;
 }
 
+// engine.ts içerisindeki PistiEngine.evaluatePlay çıktısı ile birebir uyumlu:
+export interface PlayResult {
+  isCapture: boolean;
+  isPishti: boolean;
+  isJackPishti: boolean;
+  capturedCards: Card[];
+  pointsGained: number;
+}
+
+// engine.ts içerisindeki PistiEngine.calculateFinalScores çıktısı ile birebir uyumlu:
 export interface TeamScores {
   totalCardsCount: number;
   pishtiPoints: number;
   regularPoints: number;
   majorityBonus: number;
   totalScore: number;
+  // Aşağıdaki iki satırın sonuna '?' ekleyerek bunların opsiyonel olduğunu belirttik:
+  collectedCards?: Card[];
+  bonusPoints?: number;
 }
+
+export type TeamScore = TeamScores;
 
 export interface CumulativeScores {
   teamA: number;

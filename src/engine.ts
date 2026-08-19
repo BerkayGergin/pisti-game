@@ -1,4 +1,4 @@
-import { Card, PlayResult, TeamScore } from "./types";
+import { Card, PlayResult, TeamScores } from "./types";
 
 export class PistiEngine {
   public static evaluatePlay(
@@ -72,7 +72,7 @@ export class PistiEngine {
     teamAPishtiPoints: number,
     teamBCards: Card[],
     teamBPishtiPoints: number
-  ): { teamA: TeamScore; teamB: TeamScore } {
+  ): { teamA: TeamScores; teamB: TeamScores } {
     const scoreA = this.calculateCardPoints(teamACards);
     const scoreB = this.calculateCardPoints(teamBCards);
 
@@ -88,6 +88,8 @@ export class PistiEngine {
         bonusPoints: scoreA + bonusA,
         totalCardsCount: teamACards.length,
         totalScore: scoreA + bonusA + teamAPishtiPoints,
+        regularPoints: 0,
+        majorityBonus: 0
       },
       teamB: {
         collectedCards: teamBCards,
@@ -95,6 +97,8 @@ export class PistiEngine {
         bonusPoints: scoreB + bonusB,
         totalCardsCount: teamBCards.length,
         totalScore: scoreB + bonusB + teamBPishtiPoints,
+        regularPoints: 0,
+        majorityBonus: 0
       },
     };
   }
