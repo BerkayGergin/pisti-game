@@ -162,7 +162,7 @@
         <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Şifre / PIN</label>
         <input id="input-password" type="password" placeholder="Şifrenizi girin" autocomplete="new-password" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 focus:outline-none focus:border-emerald-400 text-white font-semibold text-xs transition" />
       </div>
-      <button id="btn-auth-submit" type="submit" class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-black rounded-xl text-xs uppercase tracking-wider transition shadow-lg btn-tactile cursor-pointer">Giriş Yap / Kayıt Ol</button>
+      <button id="btn-auth-submit" type="button" class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-black rounded-xl text-xs uppercase tracking-wider transition shadow-lg btn-tactile cursor-pointer">Giriş Yap / Kayıt Ol</button>
     </form>
 
     <div class="flex items-center gap-3">
@@ -625,32 +625,7 @@
       }
     }
 
-    // İlk açılışta sadece Auth ekranını göster
-    showScreen("auth");
-   
-
-    // ==========================================
-    // GİRİŞ / MİSAFİR GİRİŞİ
-    // ==========================================
-    // Not: Sunucu tarafında bu event adlarının aynı olması gerekir.
-    const AUTH_EVENT = "auth_user";
-    const GUEST_AUTH_EVENT = "guest_login";
-
-    function setAuthBusy(isBusy) {
-      const authBtn = document.getElementById("btn-auth-submit");
-      const guestBtn = document.getElementById("btn-guest-submit");
-      if (authBtn) {
-        authBtn.disabled = isBusy;
-        authBtn.classList.toggle("opacity-60", isBusy);
-        authBtn.classList.toggle("cursor-not-allowed", isBusy);
-      }
-      if (guestBtn) {
-        guestBtn.disabled = isBusy;
-        guestBtn.classList.toggle("opacity-60", isBusy);
-        guestBtn.classList.toggle("cursor-not-allowed", isBusy);
-      }
-    }
-
+    // Auth eventleri server.ts ile birebir eşleşir.
     function showAuthError(message) {
       const box = document.getElementById("auth-error-box");
       if (!box) return;
@@ -670,35 +645,22 @@
       const password = document.getElementById("input-password").value;
 
       clearAuthError();
+      if (username.length < 2) return showAuthError("Kullanıcı adı en az 2 karakter olmalı.");
+      if (!password) return showAuthError("Lütfen şifrenizi girin.");
 
-      if (username.length < 2) {
-        showAuthError("Kullanıcı adı en az 2 karakter olmalı.");
-        return;
-      }
-      if (password.length < 1) {
-        showAuthError("Lütfen şifrenizi girin.");
-        return;
-      }
-
-      setAuthBusy(true);
-      socket.emit(AUTH_EVENT, { username, password });
-      setTimeout(() => setAuthBusy(false), 1200);
+      socket.emit("auth_user", { username, password });
     }
 
     function submitGuest() {
-      const nameInput = document.getElementById("input-guest-name");
-      const username = nameInput.value.trim() || `Misafir_${Math.floor(1000 + Math.random() * 9000)}`;
-
+      const input = document.getElementById("input-guest-name");
+      const customName = input ? input.value.trim() : "";
       clearAuthError();
-      setAuthBusy(true);
-      socket.emit(GUEST_AUTH_EVENT, username);
-      setTimeout(() => setAuthBusy(false), 1200);
+      // server.ts guest_login event'i doğrudan string bekliyor.
+      socket.emit("guest_login", customName || undefined);
     }
 
-
-    // Backend'in gerçek Socket.IO cevaplarını dinle.
     socket.on("auth_error", (message) => {
-      setAuthBusy(false);
+      clearAuthError();
       showScreen("auth");
       showAuthError(message || "Giriş başarısız.");
     });
@@ -706,16 +668,29 @@
     socket.on("auth_success", ({ user, isGuest: guestFlag }) => {
       if (user) currentUser = user;
       if (guestFlag !== undefined) isGuest = guestFlag;
-      setAuthBusy(false);
       clearAuthError();
       showScreen("lobby");
     });
 
-    // 1. Giriş ve Misafir Paneli
-    document.getElementById("auth-form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      submitAuth();
+    socket.on("logout_success", () => {
+      currentUser = null;
+      isGuest = false;
+      currentRoomId = "";
+      mySlot = null;
+      activeGameState = null;
+      if (timerInterval) clearInterval(timerInterval);
+      showScreen("auth");
     });
+
+    // İlk açılışta sadece Auth ekranını göster
+    showScreen("auth");
+   
+
+    // ==========================================
+    // EKSİK BUTON BAĞLANTILARI (BUG FIX)
+    // ==========================================
+    // 1. Giriş ve Misafir Paneli
+    document.getElementById("auth-form").addEventListener("submit", (e) => { e.preventDefault(); submitAuth(); });
     document.getElementById("btn-guest-submit").addEventListener("click", submitGuest);
 
     // 2. Lobi Ayarları (Oyun Modu, Varyant, Skor)
@@ -1424,16 +1399,9 @@
     document.getElementById("btn-channel-all").onclick = () => setChatChannel(false);
     document.getElementById("btn-channel-team").onclick = () => setChatChannel(true);
 
-    function escapeHtml(value) {
-      const div = document.createElement("div");
-      div.textContent = value == null ? "" : String(value);
-      return div.innerHTML;
-    }
-
     function sendChatMessage() {
       const text = chatInput.value.trim();
       if (!text) return;
-      if (!currentRoomId) return;
       socket.emit("send_chat", { roomId: currentRoomId, text, isTeamOnly });
       chatInput.value = "";
     }
@@ -1451,12 +1419,12 @@
         <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
           <div class="flex items-center gap-1 text-[10px] text-slate-400 mb-0.5">
             ${teamTag}
-            <span>${escapeHtml(msg.avatar || "👑")}</span>
-            <span class="font-bold text-slate-300">${escapeHtml(msg.sender || "Oyuncu")}</span>
-            <span>${escapeHtml(msg.time || "")}</span>
+            <span>${msg.avatar}</span>
+            <span class="font-bold text-slate-300">${msg.sender}</span>
+            <span>${msg.time}</span>
           </div>
           <div class="px-3.5 py-2 rounded-2xl max-w-[85%] break-words ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : msg.isTeamOnly ? 'bg-purple-950/80 border border-purple-700 text-purple-200 rounded-tl-none' : 'bg-slate-800 text-slate-200 rounded-tl-none'}">
-            ${escapeHtml(msg.text || "")}
+            ${msg.text}
           </div>
         </div>
       `;
@@ -1469,17 +1437,7 @@
     // ==========================================
     // OTURUM, GİRİŞ VE PROFİL YÖNETİMİ
     // ==========================================
-    document.getElementById("btn-logout").onclick = () => {
-      socket.emit("logout");
-      currentUser = null;
-      isGuest = false;
-      currentRoomId = "";
-      mySlot = null;
-      activeGameState = null;
-      if (timerInterval) clearInterval(timerInterval);
-      showScreen("auth");
-      clearAuthError();
-    };
+    document.getElementById("btn-logout").onclick = () => socket.emit("logout");
 
     // Lobiye Dönme ve Oyun Çıkışı (TAMAMEN GÜVENLİ)
     function returnToLobby() {
@@ -1506,33 +1464,15 @@
     document.getElementById("btn-return-lobby").onclick = returnToLobby;
     
     // Davet Linki Kopyalama
-    async function copyInviteLink() {
-      const inviteUrl = `${window.location.origin}/?room=${encodeURIComponent(currentRoomId)}`;
-      const btn = document.getElementById("btn-copy-invite");
-
-      try {
-        if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(inviteUrl);
-        } else {
-          const temp = document.createElement("textarea");
-          temp.value = inviteUrl;
-          temp.style.position = "fixed";
-          temp.style.opacity = "0";
-          document.body.appendChild(temp);
-          temp.select();
-          document.execCommand("copy");
-          temp.remove();
-        }
-
-        if (btn) {
-          btn.innerText = "✓ Kopyalandı!";
-          setTimeout(() => { btn.innerHTML = "🔗 Davet"; }, 2000);
-        }
-      } catch (err) {
-        if (btn) btn.innerText = "Kopyalanamadı";
-        console.error("Davet linki kopyalanamadı:", err);
-        setTimeout(() => { if (btn) btn.innerHTML = "🔗 Davet"; }, 2000);
-      }
+    function copyInviteLink() {
+      const inviteUrl = `${window.location.origin}/?room=${currentRoomId}`;
+      navigator.clipboard.writeText(inviteUrl).then(() => {
+        const btn = document.getElementById("btn-copy-invite");
+        btn.innerText = "✓ Kopyalandı!";
+        setTimeout(() => {
+          btn.innerHTML = "🔗 Davet";
+        }, 2000);
+      });
     }
     
     document.getElementById("btn-copy-invite").onclick = copyInviteLink;
@@ -1932,6 +1872,8 @@
     // ==========================================
     socket.on("profile_data", ({ user, themes, tableThemes, mascots, frames, achievements, isGuest: guestFlag }) => {
       currentUser = user;
+      isGuest = guestFlag !== undefined ? guestFlag : isGuest;
+      showScreen("lobby");
       
       if (themes) allThemes = themes;
       if (tableThemes) allTableThemes = tableThemes;
@@ -1940,24 +1882,11 @@
       if (achievements) allAchievements = achievements;
       if (guestFlag !== undefined) isGuest = guestFlag;
 
-      // Kimlik bilgileri geldiğinde giriş ekranında takılı kalma.
-      showScreen("lobby");
-      const guestBadge = document.getElementById("badge-guest");
-      if (guestBadge) guestBadge.classList.toggle("hidden", !isGuest);
-
       activeTheme = allThemes[user.selectedThemeId];
       activeTableTheme = (allTableThemes && user.selectedTableThemeId) ? allTableThemes[user.selectedTableThemeId] : null;
 
       const lvlInfo = calculatePlayerLevel(user.stats);
       
-      // Başarılı girişten sonra auth alanlarını temizle.
-      const authPassword = document.getElementById("input-password");
-      const guestName = document.getElementById("input-guest-name");
-      if (authPassword) authPassword.value = "";
-      if (guestName) guestName.value = "";
-      setAuthBusy(false);
-      clearAuthError();
-
       // Üst bar güncellemeleri
       document.querySelectorAll(".user-avatar-display").forEach(el => el.innerText = user.avatar || "👑");
       document.getElementById("display-username").innerText = user.username;
