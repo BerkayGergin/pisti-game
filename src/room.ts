@@ -49,6 +49,7 @@ export class GameRoom {
     if (this.players.length >= this.maxPlayers || this.status !== "WAITING") {
       return false;
     }
+    
     const slot = this.players.length;
     this.players.push({
       socketId,
@@ -66,6 +67,7 @@ export class GameRoom {
     if (this.players.length === this.maxPlayers) {
       this.startNewMatch();
     }
+    
     return true;
   }
 
@@ -73,6 +75,7 @@ export class GameRoom {
     if (this.players.length >= this.maxPlayers || this.status !== "WAITING") {
       return false;
     }
+    
     const botSlot = this.players.length;
     const botNames = ["Robot_As", "Robot_Mekanik", "Robot_Titan", "Robot_Matrix"];
     const botName = `${botNames[botSlot % botNames.length]}`;
@@ -93,6 +96,7 @@ export class GameRoom {
     if (this.players.length === this.maxPlayers) {
       this.startNewMatch();
     }
+    
     return true;
   }
 
@@ -101,8 +105,10 @@ export class GameRoom {
     if (!player) return;
 
     if (this.status === "WAITING") {
+      // Oyun başlamadan çıkanları direkt odadan sil
       this.players = this.players.filter((p) => p.socketId !== socketId);
     } else {
+      // Oyun içindeyken düşenlere 60 saniye süre ver
       player.isDisconnected = true;
       const timer = setTimeout(() => {
         player.isBot = true;
@@ -152,6 +158,7 @@ export class GameRoom {
     this.lastCapturerSlot = null;
     this.roundScores = undefined;
 
+    // Oyuncu verilerini sıfırla
     for (const player of this.players) {
       player.hand = [];
       player.capturedCards = [];
@@ -159,6 +166,7 @@ export class GameRoom {
       player.jackPishtiCount = 0;
     }
 
+    // Yere 4 kart aç
     for (let i = 0; i < 4; i++) {
       const card = this.deck.pop();
       if (card) this.middleCards.push(card);
@@ -171,6 +179,7 @@ export class GameRoom {
   }
 
   private dealCardsToPlayers() {
+    // Her oyuncuya 4'er kart dağıt
     for (let i = 0; i < 4; i++) {
       for (const player of this.players) {
         if (this.deck.length > 0) {
@@ -185,6 +194,7 @@ export class GameRoom {
     const suits: Suit[] = ["SPADES", "HEARTS", "DIAMONDS", "CLUBS"];
     const ranks: Rank[] = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
     const deck: Card[] = [];
+    
     for (const suit of suits) {
       for (const rank of ranks) {
         deck.push({ id: `${suit}_${rank}`, suit, rank });
@@ -200,7 +210,11 @@ export class GameRoom {
     }
   }
 
-  public playCard(socketId: string, cardIndex: number): { playedCard: Card; result: { captured: boolean; isPishti: boolean; isJackPishti: boolean } } | null {
+  public playCard(
+    socketId: string, 
+    cardIndex: number
+  ): { playedCard: Card; result: { captured: boolean; isPishti: boolean; isJackPishti: boolean; capturedCount: number } } | null {
+    
     if (this.status !== "PLAYING") return null;
     const player = this.players[this.currentTurnSlot];
     if (!player || player.socketId !== socketId) return null;
@@ -212,10 +226,13 @@ export class GameRoom {
     let captured = false;
     let isPishti = false;
     let isJackPishti = false;
+    let capturedCount = 0;
 
+    // Alma Kontrolü (Aynı Kart veya Vale)
     if (topCard) {
       if (playedCard.rank === topCard.rank) {
         captured = true;
+        // Pişti Kontrolü
         if (this.middleCards.length === 1) {
           isPishti = true;
           if (playedCard.rank === "J") {
@@ -232,6 +249,7 @@ export class GameRoom {
 
     if (captured) {
       this.middleCards.push(playedCard);
+      capturedCount = this.middleCards.length;
       player.capturedCards.push(...this.middleCards);
       this.middleCards = [];
       this.lastCapturerSlot = player.slot;
@@ -239,28 +257,34 @@ export class GameRoom {
       this.middleCards.push(playedCard);
     }
 
+    // Eldeki kartlar bitti mi?
     const allHandsEmpty = this.players.every((p) => p.hand.length === 0);
     if (allHandsEmpty) {
       if (this.deck.length > 0) {
         this.dealCardsToPlayers();
       } else {
         this.endRound();
-        return { playedCard, result: { captured, isPishti, isJackPishti } };
+        return { playedCard, result: { captured, isPishti, isJackPishti, capturedCount } };
       }
     }
 
+    // Sırayı sonraki oyuncuya geçir
     this.currentTurnSlot = (this.currentTurnSlot + 1) % this.players.length;
     this.resetTurnTimer();
     this.checkBotTurn();
-    return { playedCard, result: { captured, isPishti, isJackPishti } };
+    
+    return { playedCard, result: { captured, isPishti, isJackPishti, capturedCount } };
   }
 
   private checkBotTurn() {
     if (this.status !== "PLAYING") return;
     const currentPlayer = this.players[this.currentTurnSlot];
+    
     if (currentPlayer && (currentPlayer.isBot || currentPlayer.isDisconnected)) {
       if (this.botTimer) clearTimeout(this.botTimer);
+      
       const delay = this.variant === "turbo" ? Math.floor(300 + Math.random() * 300) : Math.floor(900 + Math.random() * 400);
+      
       this.botTimer = setTimeout(() => {
         const topCard = this.middleCards.length > 0 ? this.middleCards[this.middleCards.length - 1] : null;
         const chosenIndex = BotAI.chooseCardIndex(currentPlayer.hand, topCard, this.middleCards.length);
@@ -273,6 +297,7 @@ export class GameRoom {
   private endRound() {
     this.clearTimers();
 
+    // Yerde kalan kartları son alana ver
     if (this.middleCards.length > 0 && this.lastCapturerSlot !== null) {
       const capturer = this.players.find((p) => p.slot === this.lastCapturerSlot);
       if (capturer) {
@@ -284,6 +309,7 @@ export class GameRoom {
     const teamAScores = this.calculateTeamScore([0, 2]);
     const teamBScores = this.calculateTeamScore([1, 3]);
 
+    // Çoğunluk Bonus Puanı (+3)
     if (teamAScores.totalCardsCount > teamBScores.totalCardsCount) {
       teamAScores.majorityBonus = 3;
       teamAScores.totalScore += 3;
@@ -296,6 +322,7 @@ export class GameRoom {
     this.cumulativeScores.teamA += teamAScores.totalScore;
     this.cumulativeScores.teamB += teamBScores.totalScore;
 
+    // Oyun Bitiş Kontrolü
     if (this.targetScore === 0 || this.cumulativeScores.teamA >= this.targetScore || this.cumulativeScores.teamB >= this.targetScore) {
       this.status = "FINISHED";
       this.finalScores = this.roundScores;
@@ -327,7 +354,7 @@ export class GameRoom {
       else if (card.suit === "CLUBS" && card.rank === "2") regularPoints += 2;
     }
 
-    // Kanlı Pişti Modunda Pişti Puanları 2 Katı (20p / 40p)
+    // Kanlı Mod ise Pişti x2 Puan
     const pishtiMultiplier = this.variant === "bloody" ? 2 : 1;
     const pishtiPoints = (regularPishti * 10 + jackPishti * 20) * pishtiMultiplier;
 
@@ -344,6 +371,7 @@ export class GameRoom {
     if (this.turnTimer) clearTimeout(this.turnTimer);
     const duration = this.getTurnDuration();
     this.turnDeadline = Date.now() + duration;
+    
     this.turnTimer = setTimeout(() => {
       this.autoPlayTurn();
     }, duration);
@@ -352,6 +380,7 @@ export class GameRoom {
   private autoPlayTurn() {
     const player = this.players[this.currentTurnSlot];
     if (player && player.hand.length > 0) {
+      // Süre bittiğinde otomatik ilk kartı oyna
       this.playCard(player.socketId, 0);
       this.onStateChange(this.roomId);
     }

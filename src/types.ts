@@ -1,5 +1,3 @@
-// src/types.ts
-
 export type Suit = "SPADES" | "HEARTS" | "DIAMONDS" | "CLUBS";
 export type Rank = "A" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "J" | "Q" | "K";
 export type GameVariant = "standard" | "turbo" | "bloody";
@@ -23,7 +21,6 @@ export interface Player {
   isDisconnected?: boolean;
 }
 
-// engine.ts içerisindeki PistiEngine.evaluatePlay çıktısı ile birebir uyumlu:
 export interface PlayResult {
   isCapture: boolean;
   isPishti: boolean;
@@ -32,14 +29,12 @@ export interface PlayResult {
   pointsGained: number;
 }
 
-// engine.ts içerisindeki PistiEngine.calculateFinalScores çıktısı ile birebir uyumlu:
 export interface TeamScores {
   totalCardsCount: number;
   pishtiPoints: number;
   regularPoints: number;
   majorityBonus: number;
   totalScore: number;
-  // Aşağıdaki iki satırın sonuna '?' ekleyerek bunların opsiyonel olduğunu belirttik:
   collectedCards?: Card[];
   bonusPoints?: number;
 }
@@ -88,6 +83,7 @@ export interface ClientGameState {
   nextRoundCountdown?: number;
   activeTheme?: DeckTheme;
   activeTableTheme?: TableTheme;
+  playerAvatars?: any[];
 }
 
 export interface DeckTheme {
@@ -110,12 +106,38 @@ export interface TableTheme {
   previewBg: string;
 }
 
+export interface MascotTheme {
+  id: string;
+  name: string;
+  price: number;
+  isExclusive: boolean;
+  icon: string;
+}
+
+export interface FrameTheme {
+  id: string;
+  name: string;
+  price: number;
+  isExclusive: boolean;
+  cssClass: string;
+}
+
+export interface MatchRecord {
+  id: string;
+  date: string;
+  mode: string;
+  variant: string;
+  result: "WIN" | "LOSS" | "DRAW";
+  score: string;
+}
+
 export interface UserStats {
   totalWins: number;
   totalMatches: number;
   totalPishtis: number;
   totalJackPishtis: number;
   totalCardsCaptured: number;
+  winStreak?: number;
 }
 
 export interface AchievementDef {
@@ -136,6 +158,11 @@ export interface UserProfile {
   selectedThemeId: string;
   tableInventory: string[];
   selectedTableThemeId: string;
+  mascotInventory: string[];
+  selectedMascotId: string;
+  frameInventory: string[];
+  selectedFrameId: string;
+  matchHistory: MatchRecord[];
   stats: UserStats;
   claimedAchievements: string[];
 }
